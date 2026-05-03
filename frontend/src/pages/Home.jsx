@@ -10,7 +10,7 @@ const Home = () => {
     const [allSongs, setAllSongs] = useState([]);
     const [recommendedSongs, setRecommendedSongs] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { currentSong, playSong, setLyrics, loadLyrics } = usePlayer();
+    const { currentSong, playSong, setLyrics, loadLyrics, addToQueue } = usePlayer();
 
     useEffect(() => {
         loadData();
@@ -24,7 +24,6 @@ const Home = () => {
             ]);
             setAllSongs(songs);
             setRecommendedSongs(mostPlayed.length > 0 ? mostPlayed : songs.slice(0, 5));
-            console.log('Songs loaded:', songs.length);
         } catch (error) {
             console.error('Error loading songs:', error);
         } finally {
@@ -33,23 +32,17 @@ const Home = () => {
     };
 
     const handlePlaySong = async (song, index, songList) => {
-        console.log('Playing song:', song.title, 'ID:', song.id);
-
-        // Load lyrics untuk lagu yang dipilih
         if (loadLyrics) {
             await loadLyrics(song.id);
         } else {
             try {
                 const lyricsData = await getLyrics(song.id);
-                console.log('Lyrics loaded:', lyricsData?.length || 0, 'lines');
                 setLyrics(lyricsData || []);
             } catch (error) {
                 console.error('Error loading lyrics:', error);
                 setLyrics([]);
             }
         }
-
-        // Play lagu
         playSong(song, index, songList);
     };
 
@@ -61,6 +54,10 @@ const Home = () => {
             console.error('Error adding to playlist:', error);
             alert('❌ Gagal menambahkan ke Songlist');
         }
+    };
+
+    const handlePlayNext = (song) => {
+        addToQueue(song, 'next');
     };
 
     const handleToggleLike = async (songId) => {
@@ -116,6 +113,7 @@ const Home = () => {
                                         onPlay={() => handlePlaySong(song, idx, filteredSongs)}
                                         onLike={() => handleToggleLike(song.id)}
                                         onAddToPlaylist={handleAddToPlaylist}
+                                        onPlayNext={handlePlayNext}
                                     />
                                 ))}
                             </div>
@@ -133,6 +131,7 @@ const Home = () => {
                                     onPlay={() => handlePlaySong(song, idx, recommendedSongs)}
                                     onLike={() => handleToggleLike(song.id)}
                                     onAddToPlaylist={handleAddToPlaylist}
+                                    onPlayNext={handlePlayNext}
                                 />
                             ))}
                         </div>
@@ -147,6 +146,7 @@ const Home = () => {
                                     onPlay={() => handlePlaySong(song, idx, allSongs)}
                                     onLike={() => handleToggleLike(song.id)}
                                     onAddToPlaylist={handleAddToPlaylist}
+                                    onPlayNext={handlePlayNext}
                                 />
                             ))}
                         </div>

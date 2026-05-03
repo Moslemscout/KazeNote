@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { FaPlay, FaPause, FaEllipsisV, FaHeart, FaRegHeart, FaFolderOpen, FaPlus, FaShareAlt } from 'react-icons/fa';
+import { FaPlay, FaPause, FaEllipsisV, FaHeart, FaRegHeart, FaFolderOpen, FaPlus, FaShareAlt, FaStepForward } from 'react-icons/fa';
 
-const SongCard = ({ song, isPlaying, onPlay, onLike, onAddToPlaylist, onMoveCategory, showMenu = true }) => {
+const SongCard = ({ song, isPlaying, onPlay, onLike, onAddToPlaylist, onPlayNext, onMoveCategory, showMenu = true }) => {
     const [showOptions, setShowOptions] = useState(false);
 
     const handleAddToPlaylist = (e) => {
         e.stopPropagation();
         if (onAddToPlaylist) {
             onAddToPlaylist(song.id);
+        }
+        setShowOptions(false);
+    };
+
+    const handlePlayNext = (e) => {
+        e.stopPropagation();
+        if (onPlayNext) {
+            onPlayNext(song);
         }
         setShowOptions(false);
     };
@@ -90,22 +98,13 @@ const SongCard = ({ song, isPlaying, onPlay, onLike, onAddToPlaylist, onMoveCate
                             {song.is_liked ? <FaHeart /> : <FaRegHeart />}
                         </button>
 
-                        {onAddToPlaylist && (
+                        {onPlayNext && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song.id); }}
+                                onClick={(e) => { e.stopPropagation(); onPlayNext(song); }}
                                 className="w-10 rounded-full bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-500 transition flex items-center justify-center"
-                                title="Tambah ke Songlist"
+                                title="Putar Selanjutnya"
                             >
-                                <FaPlus className="text-sm" />
-                            </button>
-                        )}
-
-                        {onMoveCategory && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onMoveCategory(); }}
-                                className="px-3 rounded-full bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-500 transition text-sm flex items-center gap-1"
-                            >
-                                <FaFolderOpen className="text-xs" /> Pindah
+                                <FaStepForward className="text-sm" />
                             </button>
                         )}
                     </div>
@@ -135,6 +134,14 @@ const SongCard = ({ song, isPlaying, onPlay, onLike, onAddToPlaylist, onMoveCate
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-orange-50 hover:text-orange-500 flex items-center gap-2 transition border-t border-gray-100"
                             >
                                 <FaPlus className="text-xs" /> Tambah ke Songlist
+                            </button>
+                        )}
+                        {onPlayNext && (
+                            <button
+                                onClick={handlePlayNext}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-orange-50 hover:text-orange-500 flex items-center gap-2 transition border-t border-gray-100"
+                            >
+                                <FaStepForward className="text-xs" /> Putar Selanjutnya
                             </button>
                         )}
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaArrowLeft, FaPlus, FaFolder, FaTimes, FaHeart } from 'react-icons/fa';
+import { FaArrowLeft, FaPlus, FaFolder, FaTimes, FaHeart, FaStepForward, FaPlay } from 'react-icons/fa';
 import Header from '../components/Header1';
 import SongCard from '../components/SongCard';
 import { usePlayer } from '../contexts/PlayerContext';
@@ -13,7 +13,7 @@ const SongList = () => {
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [loading, setLoading] = useState(true);
-    const { currentSong, playSong, setLyrics, loadLyrics } = usePlayer();
+    const { currentSong, playSong, addToQueue, setLyrics, loadLyrics } = usePlayer();
 
     useEffect(() => {
         loadData();
@@ -27,7 +27,6 @@ const SongList = () => {
             ]);
             setPlaylist(playlistData);
             setCategories(categoriesData);
-            console.log('Playlist loaded:', playlistData.length);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -36,8 +35,6 @@ const SongList = () => {
     };
 
     const handlePlaySong = async (song, index, songList) => {
-        console.log('Playing from playlist:', song.title);
-
         if (loadLyrics) {
             await loadLyrics(song.id || song.song_id);
         } else {
@@ -49,8 +46,11 @@ const SongList = () => {
                 setLyrics([]);
             }
         }
-
         playSong(song, index, songList);
+    };
+
+    const handlePlayNext = (song) => {
+        addToQueue(song, 'next');
     };
 
     const handleRemoveFromPlaylist = async (songId) => {
@@ -58,10 +58,8 @@ const SongList = () => {
             try {
                 await removeFromUserPlaylist(songId);
                 await loadData();
-                alert('✅ Lagu dihapus dari Songlist');
             } catch (error) {
                 console.error('Error removing from playlist:', error);
-                alert('❌ Gagal menghapus dari Songlist');
             }
         }
     };
@@ -73,12 +71,6 @@ const SongList = () => {
         } catch (error) {
             console.error('Error toggling like:', error);
         }
-    };
-
-    // Di SongList, tidak perlu add to playlist karena sudah di playlist
-    // Tapi kita tetap sediakan fungsi kosong agar tidak error
-    const handleAddToPlaylist = async (songId) => {
-        alert('Lagu sudah ada di Songlist!');
     };
 
     const handleMoveCategory = async (song) => {
@@ -137,10 +129,9 @@ const SongList = () => {
             setShowCategoryModal(false);
             setNewCategoryName('');
             await loadData();
-            alert('✅ Kategori berhasil dibuat!');
         } catch (error) {
             console.error('Error creating category:', error);
-            alert('❌ Gagal membuat kategori');
+            alert('Gagal membuat kategori');
         }
     };
 
@@ -150,10 +141,8 @@ const SongList = () => {
                 await deleteCategory(categoryId);
                 if (selectedCategory === categoryId) setSelectedCategory('all');
                 await loadData();
-                alert('✅ Kategori berhasil dihapus!');
             } catch (error) {
                 console.error('Error deleting category:', error);
-                alert('❌ Gagal menghapus kategori');
             }
         }
     };
@@ -244,21 +233,68 @@ const SongList = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredSongs.map((song, idx) => {
                             const songId = song.song_id || song.id;
+                            const isCurrentSong = currentSong?.id === songId;
+
                             return (
                                 <div key={songId} className="relative group">
-                                    <SongCard
-                                        song={{
-                                            ...song,
-                                            id: songId,
-                                            cover_url: song.cover_url,
-                                            is_liked: song.is_liked
-                                        }}
-                                        isPlaying={currentSong?.id === songId}
-                                        onPlay={() => handlePlaySong(song, idx, filteredSongs)}
-                                        onLike={() => handleToggleLike(songId)}
-                                        onAddToPlaylist={handleAddToPlaylist}
-                                        onMoveCategory={() => handleMoveCategory(song)}
-                                    />
+                                    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer">
+                                        <div className="relative h-48">
+                                            <img
+                                                src={song.cover_url || 'https://images.unsplash.com/photo-1590796583326-afd3bb20d22d'}
+                                                alt={song.title}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    const parent = e.target.parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600"><i class="fas fa-music text-white text-5xl"></i></div>';
+                                                    }
+                                                }}
+                                            />
+                                            {isCurrentSong && (
+                                                <div className="absolute bottom-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                                                    Playing
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-4">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-gray-800 truncate">{song.title}</h4>
+                                                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                                                        <i className="fas fa-user-circle text-xs"></i> {song.artist}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2 mt-3">
+                                                <button
+                                                    onClick={() => handlePlaySong(song, idx, filteredSongs)}
+                                                    className={`flex-1 py-2 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition ${isCurrentSong ? 'bg-orange-500 text-white' : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-lg'}`}
+                                                >
+                                                    <FaPlay className="text-xs" /> {isCurrentSong ? 'Playing' : 'Play'}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleToggleLike(songId)}
+                                                    className={`w-10 rounded-full flex items-center justify-center transition ${song.is_liked ? 'bg-pink-100 text-pink-500' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                >
+                                                    <FaHeart />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handlePlayNext(song)}
+                                                    className="w-10 rounded-full bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-500 transition flex items-center justify-center"
+                                                    title="Putar Selanjutnya"
+                                                >
+                                                    <FaStepForward className="text-sm" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tombol hapus di pojok */}
                                     <button
                                         onClick={() => handleRemoveFromPlaylist(songId)}
                                         className="absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-red-500"

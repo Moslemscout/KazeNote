@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { FaPlay, FaPause, FaBackward, FaForward, FaMicrophoneAlt, FaExclamationTriangle, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import { FaPlay, FaPause, FaBackward, FaForward, FaMicrophoneAlt, FaExclamationTriangle, FaChevronUp, FaChevronDown, FaRandom, FaList, FaTrash } from 'react-icons/fa';
 import { usePlayer } from '../contexts/PlayerContext';
 
 const NowPlaying = () => {
@@ -9,6 +9,8 @@ const NowPlaying = () => {
         currentTime,
         duration,
         lyrics,
+        queue,
+        isShuffle,
         error,
         audioRef,
         togglePlayPause,
@@ -16,24 +18,26 @@ const NowPlaying = () => {
         prevSong,
         seekTo,
         formatTime,
+        toggleShuffle,
+        clearQueue,
+        removeFromQueue
     } = usePlayer();
 
     const [sliderValue, setSliderValue] = useState(0);
     const [isSliderDragging, setIsSliderDragging] = useState(false);
     const [activeLyricIndex, setActiveLyricIndex] = useState(-1);
-    const [showLyrics, setShowLyrics] = useState(false); // Default: lirik TIDAK tampil
+    const [showLyrics, setShowLyrics] = useState(false);
+    const [showQueue, setShowQueue] = useState(false);
     const [lyricsHeight, setLyricsHeight] = useState(250);
 
     const lyricsContainerRef = useRef(null);
 
-    // Update slider value
     useEffect(() => {
         if (duration > 0 && !isSliderDragging) {
             setSliderValue((currentTime / duration) * 100);
         }
     }, [currentTime, duration, isSliderDragging]);
 
-    // Update active lyric based on current time (hanya jika lirik ditampilkan)
     useEffect(() => {
         if (!showLyrics) return;
         if (!lyrics || lyrics.length === 0) {
@@ -41,7 +45,6 @@ const NowPlaying = () => {
             return;
         }
 
-        // Cari lirik yang aktif berdasarkan waktu
         let activeIndex = -1;
         for (let i = 0; i < lyrics.length; i++) {
             if (currentTime >= lyrics[i].time) {
@@ -53,8 +56,6 @@ const NowPlaying = () => {
 
         if (activeIndex !== activeLyricIndex) {
             setActiveLyricIndex(activeIndex);
-
-            // Auto scroll ke lirik yang aktif
             if (activeIndex !== -1 && lyricsContainerRef.current) {
                 const activeElement = document.getElementById(`lyric-${activeIndex}`);
                 if (activeElement) {
@@ -64,7 +65,6 @@ const NowPlaying = () => {
         }
     }, [currentTime, lyrics, activeLyricIndex, showLyrics]);
 
-    // Slider handlers
     const handleSliderChange = (e) => {
         const value = parseFloat(e.target.value);
         setSliderValue(value);
@@ -79,12 +79,6 @@ const NowPlaying = () => {
         setIsSliderDragging(false);
     };
 
-    // Toggle lyrics panel
-    const toggleLyricsPanel = () => {
-        setShowLyrics(!showLyrics);
-    };
-
-    // Klik lirik untuk lompat ke waktu tersebut
     const handleLyricClick = (time) => {
         if (audioRef.current && !isNaN(time)) {
             seekTo(time);
@@ -129,26 +123,40 @@ const NowPlaying = () => {
 
                     {/* Controls */}
                     <div className="flex items-center gap-4">
+                        {/* Shuffle Button */}
                         <button
-                            onClick={prevSong}
-                            className="text-white/80 hover:text-white hover:scale-110 transition text-lg"
+                            onClick={toggleShuffle}
+                            className={`transition text-lg ${isShuffle ? 'text-orange-500' : 'text-white/60 hover:text-white'}`}
+                            title="Putar Acak"
                         >
+                            <FaRandom />
+                        </button>
+
+                        <button onClick={prevSong} className="text-white/80 hover:text-white hover:scale-110 transition text-lg">
                             <FaBackward />
                         </button>
-                        <button
-                            onClick={togglePlayPause}
-                            className="w-10 h-10 rounded-full border-2 border-white/80 flex items-center justify-center text-white hover:scale-110 hover:border-orange-500 transition"
-                        >
+                        <button onClick={togglePlayPause} className="w-10 h-10 rounded-full border-2 border-white/80 flex items-center justify-center text-white hover:scale-110 hover:border-orange-500 transition">
                             {isPlaying ? <FaPause /> : <FaPlay className="ml-0.5" />}
                         </button>
-                        <button
-                            onClick={nextSong}
-                            className="text-white/80 hover:text-white hover:scale-110 transition text-lg"
-                        >
+                        <button onClick={nextSong} className="text-white/80 hover:text-white hover:scale-110 transition text-lg">
                             <FaForward />
                         </button>
 
-                        {/* Timeline */}
+                        {/* Queue Button */}
+                        <button
+                            onClick={() => setShowQueue(!showQueue)}
+                            className={`transition text-lg relative ${showQueue ? 'text-orange-500' : 'text-white/60 hover:text-white'}`}
+                            title="Antrian"
+                        >
+                            <FaList />
+                            {queue.length > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                                    {queue.length}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Timeline Desktop */}
                         <div className="hidden md:flex items-center gap-2">
                             <span className="text-white/70 text-xs min-w-[35px]">{formatTime(currentTime)}</span>
                             <input
@@ -157,7 +165,7 @@ const NowPlaying = () => {
                                 onChange={handleSliderChange}
                                 onMouseUp={handleSliderEnd}
                                 onTouchEnd={handleSliderEnd}
-                                className="w-32 lg:w-48 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-orange-500"
+                                className="w-32 lg:w-48 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer"
                                 step="0.01"
                                 disabled={!duration || isNaN(duration)}
                             />
@@ -167,10 +175,8 @@ const NowPlaying = () => {
 
                     {/* Tombol Toggle Lyrics */}
                     <button
-                        onClick={toggleLyricsPanel}
-                        className={`text-sm flex items-center gap-1 px-3 py-1.5 rounded-full transition ${showLyrics
-                            ? 'bg-orange-500 text-white'
-                            : 'text-white/70 hover:text-white bg-white/10 hover:bg-white/20'
+                        onClick={() => setShowLyrics(!showLyrics)}
+                        className={`text-sm flex items-center gap-1 px-3 py-1.5 rounded-full transition ${showLyrics ? 'bg-orange-500 text-white' : 'text-white/70 hover:text-white bg-white/10 hover:bg-white/20'
                             }`}
                     >
                         <FaMicrophoneAlt className="text-xs" />
@@ -179,7 +185,7 @@ const NowPlaying = () => {
                     </button>
                 </div>
 
-                {/* Timeline untuk mobile (di bawah) */}
+                {/* Timeline Mobile */}
                 <div className="relative z-10 px-4 pb-3 flex md:hidden items-center gap-2">
                     <span className="text-white/70 text-xs min-w-[35px]">{formatTime(currentTime)}</span>
                     <input
@@ -188,14 +194,13 @@ const NowPlaying = () => {
                         onChange={handleSliderChange}
                         onMouseUp={handleSliderEnd}
                         onTouchEnd={handleSliderEnd}
-                        className="flex-1 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-orange-500"
+                        className="flex-1 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer"
                         step="0.01"
                         disabled={!duration || isNaN(duration)}
                     />
                     <span className="text-white/70 text-xs min-w-[35px]">{formatTime(duration)}</span>
                 </div>
 
-                {/* Error Message */}
                 {error && (
                     <div className="relative z-10 bg-red-500/80 text-white text-xs text-center py-1">
                         <FaExclamationTriangle className="inline mr-1" /> {error}
@@ -203,68 +208,89 @@ const NowPlaying = () => {
                 )}
             </div>
 
-            {/* LYRICS PANEL - HANYA MUNCUL SAAT TOMBOL LIRIK DI KLIK */}
+            {/* QUEUE PANEL */}
+            {showQueue && (
+                <div className="bg-black/95 backdrop-blur-md border-t border-white/10 max-h-80 overflow-y-auto">
+                    <div className="sticky top-0 bg-black/95 px-4 py-2 border-b border-white/10 flex justify-between items-center">
+                        <h4 className="text-white text-sm flex items-center gap-2">
+                            <FaList className="text-orange-500" />
+                            Antrian ({queue.length} lagu)
+                        </h4>
+                        {queue.length > 0 && (
+                            <button onClick={clearQueue} className="text-red-400 text-xs hover:text-red-300 flex items-center gap-1">
+                                <FaTrash className="text-xs" /> Kosongkan
+                            </button>
+                        )}
+                    </div>
+                    <div className="py-2">
+                        {queue.length === 0 ? (
+                            <div className="text-center py-8 text-white/40 text-sm">
+                                <FaList className="text-3xl mx-auto mb-2 opacity-50" />
+                                Antrian kosong
+                                <p className="text-xs mt-1">Klik "Putar Selanjutnya" di lagu mana saja</p>
+                            </div>
+                        ) : (
+                            queue.map((song, idx) => (
+                                <div key={idx} className="flex items-center justify-between px-4 py-2 hover:bg-white/5 transition group">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <span className="text-white/40 text-xs w-6">{idx + 1}.</span>
+                                        <div className="flex-1">
+                                            <p className="text-white text-sm truncate">{song.title}</p>
+                                            <p className="text-white/40 text-xs truncate">{song.artist}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => removeFromQueue(idx)}
+                                        className="text-white/30 hover:text-red-400 transition px-2"
+                                    >
+                                        <FaTrash className="text-xs" />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* LYRICS PANEL */}
             {showLyrics && (
-                <div
-                    className="bg-black/90 backdrop-blur-md border-t border-white/10 transition-all overflow-y-auto"
-                    style={{
-                        maxHeight: lyricsHeight,
-                        height: lyricsHeight,
-                        overflowY: 'auto'
-                    }}
-                >
-                    {/* Header Lyrics Panel */}
-                    <div className="sticky top-0 bg-black/90 px-4 py-2 border-b border-white/10 z-10">
+                <div className="bg-black/90 backdrop-blur-md border-t border-white/10 transition-all overflow-y-auto" style={{ maxHeight: lyricsHeight }}>
+                    <div className="sticky top-0 bg-black/90 px-4 py-2 border-b border-white/10">
                         <div className="flex justify-between items-center text-white/70 text-xs">
                             <h4 className="flex items-center gap-2">
                                 <FaMicrophoneAlt className="text-orange-500" />
                                 <span>Lirik - {currentSong?.title}</span>
                             </h4>
-                            <div className="flex items-center gap-3">
-                                <span>{lyrics?.length || 0} baris</span>
-                                <button
-                                    onClick={toggleLyricsPanel}
-                                    className="hover:text-orange-400 transition"
-                                    title="Tutup"
-                                >
-                                    <FaChevronDown />
-                                </button>
-                            </div>
+                            <button onClick={() => setShowLyrics(false)} className="hover:text-white">
+                                <FaChevronDown />
+                            </button>
                         </div>
                     </div>
 
-                    {/* Konten Lirik */}
                     <div className="py-3 pb-6" ref={lyricsContainerRef}>
                         {!lyrics || lyrics.length === 0 ? (
                             <div className="text-center py-10 text-white/50 text-sm">
                                 <i className="fas fa-file-alt text-3xl mb-3 block"></i>
                                 <p>Belum ada lirik untuk lagu ini</p>
-                                <p className="text-xs mt-2">Masuk sebagai Admin untuk menambahkan lirik</p>
                             </div>
                         ) : (
                             lyrics.map((lyric, idx) => {
                                 const mins = Math.floor(lyric.time / 60);
                                 const secs = Math.floor(lyric.time % 60);
                                 const isActive = idx === activeLyricIndex;
-
                                 return (
                                     <div
                                         key={idx}
                                         id={`lyric-${idx}`}
                                         onClick={() => handleLyricClick(lyric.time)}
-                                        className={`flex items-center gap-3 px-4 py-2 mx-2 my-1 rounded-xl cursor-pointer transition-all duration-200
-                                            ${isActive
-                                                ? 'bg-orange-500/30 text-orange-400 border-l-4 border-orange-500 font-medium shadow-lg'
-                                                : 'text-white/60 hover:bg-white/10 hover:translate-x-1'
+                                        className={`flex items-center gap-3 px-4 py-2 mx-2 my-1 rounded-xl cursor-pointer transition-all duration-200 ${isActive ? 'bg-orange-500/30 text-orange-400 border-l-4 border-orange-500' : 'text-white/60 hover:bg-white/10'
                                             }`}
                                     >
                                         <span className={`font-mono text-xs min-w-[45px] ${isActive ? 'text-orange-400' : 'text-white/40'}`}>
                                             {mins}:{secs < 10 ? '0' : ''}{secs}
                                         </span>
                                         <span className="flex-1 text-sm">{lyric.text}</span>
-                                        {isActive && (
-                                            <span className="text-xs text-orange-400 animate-pulse ml-2">▶</span>
-                                        )}
+                                        {isActive && <span className="text-xs text-orange-400 animate-pulse">▶</span>}
                                     </div>
                                 );
                             })
