@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f4f7fc;
+    }
+}
+
+@layer components {
+    .card-bg {
+        background-image: url('https://images.unsplash.com/photo-1590796583326-afd3bb20d22d');
+        background-size: cover;
+        background-position: center 30%;
+    }
+}
+
+.lyrics-scroll::-webkit-scrollbar {
+    width: 3px;
+}
+
+.lyrics-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.lyrics-scroll::-webkit-scrollbar-thumb {
+    background: #ff7b2c;
+    border-radius: 3px;
+}
+
+/* Animasi untuk drag handle */
+.drag-handle {
+    transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+    background: rgba(255, 123, 44, 0.3);
+}
+
+/* Prevent text selection during drag */
+.dragging-active {
+    user-select: none;
+    -webkit-user-select: none;
+}

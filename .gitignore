@@ -1,0 +1,111 @@
+# ============================================
+# Node.js / JavaScript
+# ============================================
+node_modules/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================
+# Environment variables
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ============================================
+# Backend (server)
+# ============================================
+backend/node_modules/
+backend/package-lock.json
+backend/yarn.lock
+backend/.env
+backend/.env.*
+
+# Database files (SQLite)
+backend/database/*.db
+backend/database/*.db-journal
+backend/database/*.sqlite
+backend/database/*.sqlite3
+backend/database/*.wal
+backend/database/*.shm
+
+# Uploaded files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+backend/logs/
+backend/*.log
+
+# ============================================
+# Frontend (client)
+# ============================================
+frontend/node_modules/
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/.env
+frontend/.env.*
+
+# Build output
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# ============================================
+# IDE / Editor
+# ============================================
+.vscode/
+.history/
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.\#*
+
+# ============================================
+# OS generated files
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+*.bak
+
+# ============================================
+# Build / Coverage
+# ============================================
+dist/
+build/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# ============================================
+# Project specific
+# ============================================
+*.local
+test-results/
+e2e-results/
+
+# Keep .gitignore
+!.gitignore
