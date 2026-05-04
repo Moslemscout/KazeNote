@@ -1,31 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { FaSave, FaTrash, FaUpload, FaEdit, FaMusic, FaArrowLeft } from 'react-icons/fa';
+import { FaSave, FaTrash, FaUpload, FaEdit, FaMusic, FaPlus, FaTimes } from 'react-icons/fa';
 import AdminHeader from '../components/AdminHeader';
-import { getSongs, createSong, updateSong, deleteSong } from '../services/api';
+import { getSongs, createSong, updateSong, deleteSong, getCategories, createCategory, addSongToCategory } from '../services/api';
 
 const AdminSongs = () => {
     const [searchParams] = useSearchParams();
     const [songs, setSongs] = useState([]);
     const [filteredSongs, setFilteredSongs] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         title: '',
         artist: '',
-        url: ''
+        url: '',
+        categoryId: ''
     });
     const [selectedFile, setSelectedFile] = useState(null);
     const [fileName, setFileName] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const searchQuery = searchParams.get('search') || '';
 
     useEffect(() => {
-        loadSongs();
+        loadData();
     }, []);
 
     useEffect(() => {
-        // Filter songs berdasarkan search query
         if (searchQuery) {
             const filtered = songs.filter(song =>
                 song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -37,13 +40,17 @@ const AdminSongs = () => {
         }
     }, [searchQuery, songs]);
 
-    const loadSongs = async () => {
+    const loadData = async () => {
         try {
-            const data = await getSongs();
-            setSongs(data);
-            setFilteredSongs(data);
+            const [songsData, categoriesData] = await Promise.all([
+                getSongs(),
+                getCategories()
+            ]);
+            setSongs(songsData);
+            setFilteredSongs(songsData);
+            setCategories(categoriesData);
         } catch (error) {
-            console.error('Error loading songs:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
@@ -60,6 +67,25 @@ const AdminSongs = () => {
         }
     };
 
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) {
+            alert('Nama kategori tidak boleh kosong');
+            return;
+        }
+        
+        try {
+            const newCategory = await createCategory(newCategoryName);
+            setCategories([...categories, newCategory]);
+            setFormData({ ...formData, categoryId: newCategory.id });
+            setShowNewCategoryModal(false);
+            setNewCategoryName('');
+            alert('✅ Kategori berhasil dibuat!');
+        } catch (error) {
+            console.error('Error creating category:', error);
+            alert('❌ Gagal membuat kategori');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -68,12 +94,20 @@ const AdminSongs = () => {
             return;
         }
 
+        let songId = editingId;
+        
         if (editingId) {
             try {
                 await updateSong(editingId, formData);
                 alert('Lagu berhasil diperbarui!');
+                
+                // Update kategori jika berubah
+                if (formData.categoryId) {
+                    await addSongToCategory(formData.categoryId, editingId);
+                }
+                
                 resetForm();
-                loadSongs();
+                loadData();
             } catch (error) {
                 console.error('Error updating song:', error);
                 alert('Gagal memperbarui lagu');
@@ -86,10 +120,17 @@ const AdminSongs = () => {
             if (selectedFile) submitData.append('file', selectedFile);
 
             try {
-                await createSong(submitData);
+                const newSong = await createSong(submitData);
+                songId = newSong.id;
+                
+                // Tambah ke kategori jika dipilih
+                if (formData.categoryId) {
+                    await addSongToCategory(formData.categoryId, newSong.id);
+                }
+                
                 alert('Lagu berhasil ditambahkan!');
                 resetForm();
-                loadSongs();
+                loadData();
             } catch (error) {
                 console.error('Error creating song:', error);
                 alert('Gagal menambahkan lagu');
@@ -98,7 +139,7 @@ const AdminSongs = () => {
     };
 
     const resetForm = () => {
-        setFormData({ title: '', artist: '', url: '' });
+        setFormData({ title: '', artist: '', url: '', categoryId: '' });
         setSelectedFile(null);
         setFileName('');
         setEditingId(null);
@@ -108,7 +149,8 @@ const AdminSongs = () => {
         setFormData({
             title: song.title,
             artist: song.artist,
-            url: song.url || ''
+            url: song.url || '',
+            categoryId: song.category_id || ''
         });
         setEditingId(song.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -118,7 +160,7 @@ const AdminSongs = () => {
         if (confirm(`Yakin hapus lagu "${title}"?`)) {
             try {
                 await deleteSong(id);
-                loadSongs();
+                loadData();
                 alert('Lagu berhasil dihapus');
             } catch (error) {
                 console.error('Error deleting song:', error);
@@ -198,6 +240,35 @@ const AdminSongs = () => {
                                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-white"
                                 />
                                 
+                                {/* Dropdown Kategori */}
+                                <div className="relative">
+                                    <label className="block text-white text-sm mb-2">Kategori Musik</label>
+                                    <div className="flex gap-2">
+                                        <select
+                                            name="categoryId"
+                                            value={formData.categoryId}
+                                            onChange={handleInputChange}
+                                            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-white"
+                                        >
+                                            <option value="">-- Pilih Kategori --</option>
+                                            {categories.map(cat => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewCategoryModal(true)}
+                                            className="px-4 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition flex items-center gap-1"
+                                            title="Buat Kategori Baru"
+                                        >
+                                            <FaPlus /> Baru
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* File Upload */}
                                 <div className="relative">
                                     <input
                                         type="file"
@@ -262,34 +333,83 @@ const AdminSongs = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    filteredSongs.map(song => (
-                                        <div key={song.id} className="bg-white rounded-xl p-4 flex justify-between items-center">
-                                            <div>
-                                                <h4 className="font-bold text-gray-800">{song.title}</h4>
-                                                <p className="text-sm text-gray-500">{song.artist}</p>
+                                    filteredSongs.map(song => {
+                                        const category = categories.find(c => c.id === song.category_id);
+                                        return (
+                                            <div key={song.id} className="bg-white rounded-xl p-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-gray-800">{song.title}</h4>
+                                                        <p className="text-sm text-gray-500">{song.artist}</p>
+                                                        {category && (
+                                                            <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                                                                {category.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleEdit(song)}
+                                                            className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-500 hover:text-white transition flex items-center justify-center"
+                                                        >
+                                                            <FaEdit />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(song.id, song.title)}
+                                                            className="w-8 h-8 rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white transition flex items-center justify-center"
+                                                        >
+                                                            <FaTrash />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleEdit(song)}
-                                                    className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-500 hover:text-white transition flex items-center justify-center"
-                                                >
-                                                    <FaEdit />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(song.id, song.title)}
-                                                    className="w-8 h-8 rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white transition flex items-center justify-center"
-                                                >
-                                                    <FaTrash />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            {/* Modal Tambah Kategori Baru */}
+            {showNewCategoryModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <FaPlus className="text-orange-500" /> Buat Kategori Baru
+                            </h3>
+                            <button onClick={() => setShowNewCategoryModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <FaTimes />
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Nama kategori (contoh: Pop, Rock, Jazz)"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-300 mb-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
+                            onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+                            autoFocus
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCreateCategory}
+                                className="flex-1 bg-orange-500 text-white py-2 rounded-full font-semibold hover:bg-orange-600 transition"
+                            >
+                                Buat Kategori
+                            </button>
+                            <button
+                                onClick={() => setShowNewCategoryModal(false)}
+                                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-full font-semibold hover:bg-gray-300 transition"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaArrowLeft, FaPlus, FaFolder, FaTimes, FaHeart, FaStepForward, FaPlay } from 'react-icons/fa';
-import Header from '../components/Header1';
+import Header from '../components/Header';
 import SongCard from '../components/SongCard';
 import { usePlayer } from '../contexts/PlayerContext';
 import { getUserPlaylist, removeFromUserPlaylist, toggleLike, getCategories, createCategory, deleteCategory, addSongToCategory, removeSongFromCategory, getLyrics } from '../services/api';
